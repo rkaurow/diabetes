@@ -1,0 +1,218 @@
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+import pandas as pd
+import requests
+from flask import Flask, jsonify, render_template, request
+from dotenv import load_dotenv
+
+from src.diabetes_app.config import DEFAULT_FEATURE_ORDER, MODEL_PATH
+from src.diabetes_app.features import age_to_cdc_bucket
+from src.diabetes_app.model import load_model, predict_risk_probability
+
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_FILE = BASE_DIR / MODEL_PATH
+load_dotenv(BASE_DIR / ".env")
+
+app = Flask(__name__, template_folder="templates")
+
+
+def _risk_summary(risk_pct: float) -> tuple[str, str]:
+    if risk_pct < 20:
+        return "Risiko Rendah (Aman)", (
+            "Pertahankan gaya hidup sehat, cek gula darah berkala, dan lanjutkan aktivitas fisik rutin."
+        )
+    if risk_pct < 50:
+        return "Risiko Sedang (Waspada)", (
+            "Mulai perbaikan pola makan dan olahraga terstruktur 150 menit per minggu, serta cek lab saat memungkinkan."
+        )
+    return "Risiko Tinggi (Bahaya)", (
+        "Segera lakukan konsultasi medis dan pemeriksaan gula darah lanjutan (GDP/HbA1c) di fasilitas kesehatan."
+    )
+
+
+def _build_chat_prompt(user_message: str, screening_result: dict | None) -> str:
+    if not screening_result:
+        return (
+            "Pengguna belum punya hasil skrining terbaru. "
+            "Jawab pertanyaan secara umum dalam konteks pencegahan diabetes, "
+            "tetap ringkas, jelas, dan gunakan bahasa Indonesia. "
+            f"\n\nPertanyaan pengguna: {user_message}"
+        )
+
+    risk_score = screening_result.get("riskScore")
+    status = screening_result.get("status")
+    factors = screening_result.get("factors", [])
+    bmi = screening_result.get("bmi")
+    age = screening_result.get("age")
+    sex = screening_result.get("sex")
+
+    return (
+        "Berperan sebagai asisten kesehatan edukatif untuk skrining diabetes. "
+        "Berikan jawaban dalam bahasa Indonesia yang empatik, praktis, dan tidak menakut-nakuti. "
+        "Sertakan langkah yang bisa dilakukan harian, lalu akhiri dengan disclaimer singkat bahwa ini bukan diagnosis medis."
+        "\n\nData skrining pengguna:"
+        f"\n- Skor Risiko: {risk_score}%"
+        f"\n- Status: {status}"
+        f"\n- Usia: {age}"
+        f"\n- Jenis Kelamin: {sex}"
+        f"\n- BMI: {bmi}"
+        f"\n- Faktor Risiko: {', '.join(factors) if factors else 'Tidak ada faktor dominan'}"
+        f"\n\nPertanyaan pengguna: {user_message}"
+    )
+
+
+@app.get("/")
+def index():
+    return render_template("index.html")
+
+
+@app.post("/api/predict")
+def predict():
+    payload = request.get_json(silent=True) or {}
+
+    age_real = int(payload.get("age", 35))
+    age_cdc = age_to_cdc_bucket(max(age_real, 1))
+    sex = int(payload.get("Sex", 0))
+
+    values = {
+        "HighBP": int(payload.get("HighBP", 0)),
+        "HighChol": int(payload.get("HighChol", 0)),
+        "CholCheck": int(payload.get("CholCheck", 1)),
+        "BMI": float(payload.get("BMI", 23.0)),
+        "Smoker": int(payload.get("Smoker", 0)),
+        "Stroke": int(payload.get("Stroke", 0)),
+        "HeartDiseaseorAttack": int(payload.get("HeartDiseaseorAttack", 0)),
+        "PhysActivity": int(payload.get("PhysActivity", 1)),
+        "Fruits": int(payload.get("Fruits", 1)),
+        "Veggies": int(payload.get("Veggies", 1)),
+        "HvyAlcoholConsump": int(payload.get("HvyAlcoholConsump", 0)),
+        "AnyHealthcare": int(payload.get("AnyHealthcare", 1)),
+        "NoDocbcCost": int(payload.get("NoDocbcCost", 0)),
+        "GenHlth": int(payload.get("GenHlth", 3)),
+        "MentHlth": int(payload.get("MentHlth", 0)),
+        "PhysHlth": int(payload.get("PhysHlth", 0)),
+        "DiffWalk": int(payload.get("DiffWalk", 0)),
+        "Sex": sex,
+        "Age": age_cdc,
+        "Education": int(payload.get("Education", 4)),
+        "Income": int(payload.get("Income", 6)),
+    }
+
+    model = load_model(str(MODEL_FILE))
+    feature_order = list(getattr(model, "feature_names_in_", DEFAULT_FEATURE_ORDER))
+
+    row = [values.get(feature, 0) for feature in feature_order]
+    input_df = pd.DataFrame([row], columns=feature_order)
+
+    pred = int(model.predict(input_df)[0])
+    prob = predict_risk_probability(model, input_df)
+    if prob is None:
+        prob = 0.75 if pred == 1 else 0.15
+
+    risk_pct = float(prob) * 100.0
+    status, recommendation = _risk_summary(risk_pct)
+
+    factors = []
+    if values["HighBP"]:
+        factors.append("Hipertensi")
+    if values["HighChol"]:
+        factors.append("Kolesterol Tinggi")
+    if values["BMI"] >= 25:
+        factors.append("Kelebihan Berat Badan")
+    if values["HeartDiseaseorAttack"]:
+        factors.append("Riwayat Penyakit Jantung")
+    if values["Smoker"]:
+        factors.append("Kebiasaan Merokok")
+    if not values["PhysActivity"]:
+        factors.append("Kurang Aktivitas Fisik")
+
+    return jsonify(
+        {
+            "ok": True,
+            "risk_score": round(risk_pct, 2),
+            "status": status,
+            "recommendation": recommendation,
+            "factors": factors,
+            "prediction": pred,
+        }
+    )
+
+
+@app.post("/api/chat")
+def chat():
+    payload = request.get_json(silent=True) or {}
+    user_message = str(payload.get("message", "")).strip()
+    screening_result = payload.get("screening_result")
+
+    if not user_message:
+        return jsonify({"ok": False, "error": "Pesan tidak boleh kosong."}), 400
+
+    api_key = os.getenv("SUMOPOD_API_KEY", "").strip()
+    if not api_key:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "SUMOPOD_API_KEY belum diset di file .env",
+                }
+            ),
+            503,
+        )
+
+    prompt = _build_chat_prompt(user_message, screening_result)
+    system_prompt = (
+        "Kamu adalah HealthAssistant AI untuk edukasi dini risiko diabetes. "
+        "Hanya berikan edukasi dan rekomendasi gaya hidup, bukan diagnosis final."
+    )
+
+    try:
+        resp = requests.post(
+            "https://ai.sumopod.com/v1/chat/completions",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+            },
+            json={
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
+                ],
+                "max_tokens": 450,
+                "temperature": 0.7,
+            },
+            timeout=45,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        if not text:
+            return jsonify({"ok": False, "error": "Respons AI kosong."}), 502
+        return jsonify({"ok": True, "reply": text})
+    except requests.HTTPError as exc:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": f"Sumopod API error: {exc.response.status_code}",
+                }
+            ),
+            502,
+        )
+    except requests.RequestException:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "Gagal menghubungi Sumopod API.",
+                }
+            ),
+            502,
+        )
+
+
+if __name__ == "__main__":
+    app.run(debug=True)

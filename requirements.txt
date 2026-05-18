@@ -1,0 +1,8 @@
+streamlit>=1.35
+flask>=3.0
+python-dotenv>=1.0
+requests>=2.32
+pandas>=2.2
+numpy>=2.0,<2.2
+scikit-learn>=1.6,<1.8
+joblib>=1.4

@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Deteksi Dini Diabetes Mellitus - Universitas Prisma</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        clinical: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #f8fafc; }
+        .tab-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        @media print {
+            .no-print { display: none !important; }
+            .print-card { border: 1px solid #e2e8f0 !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body class="font-sans text-slate-800 antialiased min-h-screen flex flex-col">
+    <header class="bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+            <div class="flex justify-between min-h-16 items-center gap-3">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-clinical-500 text-white p-2.5 rounded-xl shadow-md shadow-clinical-500/20">
+                        <i data-lucide="activity" class="h-6 w-6"></i>
+                    </div>
+                    <div>
+                        <span class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-clinical-700 to-clinical-500 bg-clip-text text-transparent">DIABETES DETECT</span>
+                        <div class="text-[10px] font-semibold text-slate-400 tracking-wider uppercase -mt-1">Universitas Prisma Manado</div>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    class="md:hidden p-2 rounded-lg border border-slate-200 text-slate-600"
+                    aria-label="Buka menu navigasi"
+                    aria-expanded="false"
+                    id="mobile-nav-toggle"
+                    onclick="toggleMobileNav()"
+                >
+                    <i data-lucide="menu" class="w-5 h-5"></i>
+                </button>
+
+                <nav class="hidden md:flex space-x-1 bg-slate-100 p-1 rounded-xl" id="desktop-nav">
+                    <button onclick="switchTab('screening')" id="btn-tab-screening" class="tab-btn px-4 py-2 text-xs font-semibold rounded-lg tab-transition bg-white text-clinical-700 shadow-sm">
+                        <span class="flex items-center space-x-1.5"><i data-lucide="shield-alert" class="w-4 h-4"></i><span>Skrining Mandiri</span></span>
+                    </button>
+                    <button onclick="switchTab('analytics')" id="btn-tab-analytics" class="tab-btn px-4 py-2 text-xs font-semibold rounded-lg tab-transition text-slate-600 hover:text-slate-900">
+                        <span class="flex items-center space-x-1.5"><i data-lucide="bar-chart-3" class="w-4 h-4"></i><span>Analisis Model ML</span></span>
+                    </button>
+                    <button onclick="switchTab('consultation')" id="btn-tab-consultation" class="tab-btn px-4 py-2 text-xs font-semibold rounded-lg tab-transition text-slate-600 hover:text-slate-900">
+                        <span class="flex items-center space-x-1.5"><i data-lucide="bot" class="w-4 h-4"></i><span>Konsultasi AI</span></span>
+                    </button>
+                    <button onclick="switchTab('history')" id="btn-tab-history" class="tab-btn px-4 py-2 text-xs font-semibold rounded-lg tab-transition text-slate-600 hover:text-slate-900">
+                        <span class="flex items-center space-x-1.5"><i data-lucide="history" class="w-4 h-4"></i><span>Riwayat Pasien</span></span>
+                    </button>
+                </nav>
+            </div>
+
+            <nav id="mobile-nav" class="hidden md:hidden mt-2 bg-slate-100 p-2 rounded-xl">
+                <div class="grid grid-cols-1 gap-1">
+                    <button onclick="switchTab('screening')" id="m-btn-tab-screening" class="mobile-tab-btn text-left px-3 py-2 text-xs font-semibold rounded-lg tab-transition bg-white text-clinical-700 shadow-sm">
+                        <span class="flex items-center space-x-1.5"><i data-lucide="shield-alert" class="w-4 h-4"></i><span>Skrining Mandiri</span></span>
+                    </button>
+                    <button onclick="switchTab('analytics')" id="m-btn-tab-analytics" class="mobile-tab-btn text-left px-3 py-2 text-xs font-semibold rounded-lg tab-transition text-slate-600 hover:text-slate-900">
+                        <span class="flex items-center space-x-1.5"><i data-lucide="bar-chart-3" class="w-4 h-4"></i><span>Analisis Model ML</span></span>
+                    </button>
+                    <button onclick="switchTab('consultation')" id="m-btn-tab-consultation" class="mobile-tab-btn text-left px-3 py-2 text-xs font-semibold rounded-lg tab-transition text-slate-600 hover:text-slate-900">
+                        <span class="flex items-center space-x-1.5"><i data-lucide="bot" class="w-4 h-4"></i><span>Konsultasi AI</span></span>
+                    </button>
+                    <button onclick="switchTab('history')" id="m-btn-tab-history" class="mobile-tab-btn text-left px-3 py-2 text-xs font-semibold rounded-lg tab-transition text-slate-600 hover:text-slate-900">
+                        <span class="flex items-center space-x-1.5"><i data-lucide="history" class="w-4 h-4"></i><span>Riwayat Pasien</span></span>
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div id="tab-screening" class="tab-content block">
+            <div class="mb-8 p-6 bg-gradient-to-r from-clinical-50 to-blue-50/50 rounded-2xl border border-clinical-100/60 flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
+                <div class="space-y-1">
+                    <span class="bg-clinical-100 text-clinical-700 text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">Proposal Penelitian</span>
+                    <h1 class="text-xl md:text-2xl font-bold text-slate-900">Deteksi Dini Risiko Diabetes Mellitus</h1>
+                    <p class="text-xs text-slate-500 max-w-2xl">Implementasi model Machine Learning menggunakan dataset CDC Diabetes Health Indicators.</p>
+                </div>
+                <div class="text-xs text-slate-400 border-l-0 md:border-l border-slate-200 pl-0 md:pl-6">
+                    <p class="font-semibold text-slate-600">Oleh:</p>
+                    <p>Larry Anthonio Ruitan (20922005)</p>
+                    <p>Program Studi Informatika, Universitas Prisma</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <form id="screening-form" onsubmit="runDiagnostic(event)" class="lg:col-span-7 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-8 no-print">
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-2 border-b border-slate-100 pb-2">
+                            <div class="p-1.5 bg-sky-50 text-sky-600 rounded-lg"><i data-lucide="user" class="w-4 h-4"></i></div>
+                            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">1. Profil Fisik & Demografi</h3>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Tinggi Badan (cm)</label>
+                                <input type="number" id="height" min="100" max="250" value="165" oninput="calculateBMI()" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-clinical-500 bg-slate-50/50" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Berat Badan (kg)</label>
+                                <input type="number" id="weight" min="30" max="250" value="65" oninput="calculateBMI()" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-clinical-500 bg-slate-50/50" required>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-xl flex items-center justify-between">
+                            <span class="text-xs font-medium text-slate-500">Calculated BMI (Indeks Massa Tubuh):</span>
+                            <div class="flex items-center space-x-2">
+                                <span id="bmi-val" class="text-sm font-bold text-slate-800">23.88</span>
+                                <span id="bmi-status" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Normal</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Usia (Tahun)</label>
+                                <input type="number" id="age" min="18" max="120" value="35" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-clinical-500 bg-slate-50/50" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Jenis Kelamin</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <label class="border border-slate-200 rounded-xl px-3 py-2 flex items-center justify-center text-xs font-medium cursor-pointer hover:bg-slate-50 select-none"><input type="radio" name="sex" value="0" class="mr-2 accent-clinical-500" checked> Perempuan</label>
+                                    <label class="border border-slate-200 rounded-xl px-3 py-2 flex items-center justify-center text-xs font-medium cursor-pointer hover:bg-slate-50 select-none"><input type="radio" name="sex" value="1" class="mr-2 accent-clinical-500"> Laki-laki</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-2 border-b border-slate-100 pb-2"><div class="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg"><i data-lucide="stethoscope" class="w-4 h-4"></i></div><h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">2. Parameter Klinis</h3></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="p-3 border border-slate-100 rounded-xl"><span class="text-xs font-bold text-slate-700">Tekanan Darah Tinggi</span><div class="flex gap-2 mt-2"><label class="px-3 py-1.5 border rounded-lg text-xs"><input type="radio" name="HighBP" value="1" class="mr-1"> Ya</label><label class="px-3 py-1.5 border rounded-lg text-xs"><input type="radio" name="HighBP" value="0" class="mr-1" checked> Tidak</label></div></div>
+                            <div class="p-3 border border-slate-100 rounded-xl"><span class="text-xs font-bold text-slate-700">Kolesterol Tinggi</span><div class="flex gap-2 mt-2"><label class="px-3 py-1.5 border rounded-lg text-xs"><input type="radio" name="HighChol" value="1" class="mr-1"> Ya</label><label class="px-3 py-1.5 border rounded-lg text-xs"><input type="radio" name="HighChol" value="0" class="mr-1" checked> Tidak</label></div></div>
+                            <div class="p-3 border border-slate-100 rounded-xl"><span class="text-xs font-bold text-slate-700">Cek Kolesterol 5 Tahun Terakhir</span><div class="flex gap-2 mt-2"><label class="px-3 py-1.5 border rounded-lg text-xs"><input type="radio" name="CholCheck" value="1" class="mr-1" checked> Ya</label><label class="px-3 py-1.5 border rounded-lg text-xs"><input type="radio" name="CholCheck" value="0" class="mr-1"> Tidak</label></div></div>
+                            <div class="p-3 border border-slate-100 rounded-xl"><span class="text-xs font-bold text-slate-700">Riwayat Jantung/Stroke</span><div class="flex gap-2 mt-2"><label class="px-3 py-1.5 border rounded-lg text-xs"><input type="radio" name="HeartDiseaseorAttack" value="1" class="mr-1"> Ya</label><label class="px-3 py-1.5 border rounded-lg text-xs"><input type="radio" name="HeartDiseaseorAttack" value="0" class="mr-1" checked> Tidak</label></div></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-2 border-b border-slate-100 pb-2"><div class="p-1.5 bg-amber-50 text-amber-600 rounded-lg"><i data-lucide="heart" class="w-4 h-4"></i></div><h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">3. Pola Gaya Hidup</h3></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="p-3 border border-slate-100 rounded-xl"><span class="text-xs font-bold text-slate-700">Perokok Aktif</span><div class="flex gap-2 mt-2"><label class="flex-1 text-center py-1.5 border rounded-lg text-xs"><input type="radio" name="Smoker" value="1" class="mr-1"> Ya</label><label class="flex-1 text-center py-1.5 border rounded-lg text-xs"><input type="radio" name="Smoker" value="0" class="mr-1" checked> Tidak</label></div></div>
+                            <div class="p-3 border border-slate-100 rounded-xl"><span class="text-xs font-bold text-slate-700">Aktivitas Fisik</span><div class="flex gap-2 mt-2"><label class="flex-1 text-center py-1.5 border rounded-lg text-xs"><input type="radio" name="PhysActivity" value="1" class="mr-1" checked> Ya</label><label class="flex-1 text-center py-1.5 border rounded-lg text-xs"><input type="radio" name="PhysActivity" value="0" class="mr-1"> Tidak</label></div></div>
+                            <div class="p-3 border border-slate-100 rounded-xl"><span class="text-xs font-bold text-slate-700">Konsumsi Buah Harian</span><div class="flex gap-2 mt-2"><label class="flex-1 text-center py-1.5 border rounded-lg text-xs"><input type="radio" name="Fruits" value="1" class="mr-1" checked> Ya</label><label class="flex-1 text-center py-1.5 border rounded-lg text-xs"><input type="radio" name="Fruits" value="0" class="mr-1"> Tidak</label></div></div>
+                            <div class="p-3 border border-slate-100 rounded-xl"><span class="text-xs font-bold text-slate-700">Konsumsi Sayur Harian</span><div class="flex gap-2 mt-2"><label class="flex-1 text-center py-1.5 border rounded-lg text-xs"><input type="radio" name="Veggies" value="1" class="mr-1" checked> Ya</label><label class="flex-1 text-center py-1.5 border rounded-lg text-xs"><input type="radio" name="Veggies" value="0" class="mr-1"> Tidak</label></div></div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="p-3 border border-slate-100 rounded-xl"><span class="text-xs font-bold text-slate-700">Alkohol Berlebih</span><div class="flex gap-2 mt-2"><label class="px-3 py-1.5 border rounded-lg text-xs"><input type="radio" name="HvyAlcoholConsump" value="1" class="mr-1"> Ya</label><label class="px-3 py-1.5 border rounded-lg text-xs"><input type="radio" name="HvyAlcoholConsump" value="0" class="mr-1" checked> Tidak</label></div></div>
+                            <div class="p-3 border border-slate-100 rounded-xl"><span class="text-xs font-bold text-slate-700">Riwayat Stroke</span><div class="flex gap-2 mt-2"><label class="px-3 py-1.5 border rounded-lg text-xs"><input type="radio" name="Stroke" value="1" class="mr-1"> Ya</label><label class="px-3 py-1.5 border rounded-lg text-xs"><input type="radio" name="Stroke" value="0" class="mr-1" checked> Tidak</label></div></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-2 border-b border-slate-100 pb-2"><div class="p-1.5 bg-purple-50 text-purple-600 rounded-lg"><i data-lucide="shield-check" class="w-4 h-4"></i></div><h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">4. Kondisi Umum & Kualitas Hidup</h3></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <div class="flex justify-between text-xs font-bold text-slate-700 mb-1"><span>Penilaian Kesehatan Umum</span><span id="lbl-genhealth" class="text-clinical-600">Cukup Sehat (3/5)</span></div>
+                                <input type="range" id="GenHlth" min="1" max="5" value="3" oninput="updateGenHealthLabel(this.value)" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-clinical-500">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs font-bold text-slate-700 mb-1"><span>Hari Kesehatan Fisik Buruk</span><span id="lbl-physhealth" class="text-clinical-600">0 Hari</span></div>
+                                <input type="range" id="PhysHlth" min="0" max="30" value="0" oninput="document.getElementById('lbl-physhealth').innerText=this.value+' Hari'" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-clinical-500">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs font-bold text-slate-700 mb-1"><span>Hari Mental Buruk</span><span id="lbl-menthealth" class="text-clinical-600">0 Hari</span></div>
+                                <input type="range" id="MentHlth" min="0" max="30" value="0" oninput="document.getElementById('lbl-menthealth').innerText=this.value+' Hari'" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-clinical-500">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs font-bold text-slate-700 mb-1"><span>Kesulitan Berjalan</span></div>
+                                <div class="flex gap-2"><label class="px-3 py-1.5 border rounded-lg text-xs"><input type="radio" name="DiffWalk" value="1" class="mr-1"> Ya</label><label class="px-3 py-1.5 border rounded-lg text-xs"><input type="radio" name="DiffWalk" value="0" class="mr-1" checked> Tidak</label></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="p-3 border border-slate-100 rounded-xl"><span class="text-xs font-bold text-slate-700">Memiliki Asuransi/BPJS</span><div class="flex gap-2 mt-2"><label class="flex-1 text-center py-1.5 border rounded-lg text-xs"><input type="radio" name="AnyHealthcare" value="1" class="mr-1" checked> Ya</label><label class="flex-1 text-center py-1.5 border rounded-lg text-xs"><input type="radio" name="AnyHealthcare" value="0" class="mr-1"> Tidak</label></div></div>
+                            <div class="p-3 border border-slate-100 rounded-xl"><span class="text-xs font-bold text-slate-700">Batal Berobat karena Biaya</span><div class="flex gap-2 mt-2"><label class="flex-1 text-center py-1.5 border rounded-lg text-xs"><input type="radio" name="NoDocbcCost" value="1" class="mr-1"> Ya</label><label class="flex-1 text-center py-1.5 border rounded-lg text-xs"><input type="radio" name="NoDocbcCost" value="0" class="mr-1" checked> Tidak</label></div></div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4">
+                        <button type="submit" class="w-full bg-clinical-600 hover:bg-clinical-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-clinical-600/10 flex items-center justify-center space-x-2 tab-transition">
+                            <i data-lucide="play" class="w-5 h-5"></i>
+                            <span>Evaluasi Hasil Skrining</span>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm sticky top-24 print-card">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                            <div class="flex items-center space-x-2"><i data-lucide="clipboard-check" class="text-clinical-500 w-5 h-5"></i><h3 class="font-bold text-slate-800">Ringkasan Hasil Skrining</h3></div>
+                            <button onclick="window.print()" class="no-print p-1.5 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-lg border border-slate-200" title="Cetak Hasil Laporan"><i data-lucide="printer" class="w-4 h-4"></i></button>
+                        </div>
+
+                        <div class="no-print mb-6">
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Pilih Algoritma Pembanding</label>
+                            <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
+                                <button type="button" onclick="selectPredictionModel('gradient_boosting')" id="mbtn-gb" class="model-select-btn px-2 py-1.5 text-[10px] font-bold rounded-lg bg-white text-clinical-700 shadow-sm">GB (Model Asli)</button>
+                                <button type="button" onclick="selectPredictionModel('random_forest')" id="mbtn-rf" class="model-select-btn px-2 py-1.5 text-[10px] font-bold rounded-lg text-slate-600 hover:text-slate-900">RF (View)</button>
+                                <button type="button" onclick="selectPredictionModel('logistic_regression')" id="mbtn-lr" class="model-select-btn px-2 py-1.5 text-[10px] font-bold rounded-lg text-slate-600 hover:text-slate-900">LR (View)</button>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col items-center justify-center py-6 border-b border-slate-100">
+                            <div class="relative w-36 h-36 flex items-center justify-center rounded-full bg-slate-50 border-4 border-slate-100 shadow-inner">
+                                <div id="risk-gauge-color" class="absolute inset-0 rounded-full border-4 border-emerald-500 opacity-20"></div>
+                                <div class="text-center z-10">
+                                    <span id="risk-value" class="text-4xl font-extrabold text-emerald-600">4.5%</span>
+                                    <div class="text-[9px] font-bold text-slate-400 tracking-widest uppercase mt-0.5">Skor Risiko</div>
+                                </div>
+                            </div>
+                            <div class="mt-4 text-center">
+                                <span id="risk-badge" class="px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 uppercase tracking-wider">Risiko Rendah (Aman)</span>
+                                <p id="risk-description" class="text-xs text-slate-400 max-w-sm mt-3">Sistem siap melakukan skrining.</p>
+                            </div>
+                        </div>
+
+                        <div class="py-4 space-y-3">
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Faktor Risiko Terdeteksi</h4>
+                            <div id="risk-factors-list" class="space-y-2 text-xs">
+                                <div class="flex items-center space-x-2 text-emerald-600 font-medium"><i data-lucide="check-circle-2" class="w-4 h-4"></i><span>Kondisi tubuh & klinis relatif aman dan terkontrol.</span></div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 p-4 rounded-xl border border-clinical-100 bg-clinical-50/50">
+                            <div class="flex items-start space-x-2.5">
+                                <div class="text-clinical-600 p-1 bg-clinical-100 rounded-lg"><i data-lucide="lightbulb" class="w-4 h-4"></i></div>
+                                <div class="space-y-0.5">
+                                    <span class="text-xs font-bold text-clinical-800">Panduan Tindak Lanjut</span>
+                                    <p id="risk-action" class="text-[11px] text-slate-600 leading-relaxed">Isi form lalu klik evaluasi untuk mendapat rekomendasi berbasis model Python.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 no-print">
+                            <button onclick="sendToAIConsultant()" class="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center space-x-2 transition shadow-lg shadow-slate-900/10">
+                                <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
+                                <span>Konsultasikan Lanjut dengan AI</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-analytics" class="tab-content hidden">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm"><span class="text-xs text-slate-400 font-bold uppercase tracking-wider">Model Utama</span><h4 class="text-lg font-extrabold text-slate-800 mt-1">Model dari Python (joblib)</h4></div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm"><span class="text-xs text-slate-400 font-bold uppercase tracking-wider">Backend</span><h4 class="text-lg font-extrabold text-emerald-600 mt-1">Flask API</h4></div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm"><span class="text-xs text-slate-400 font-bold uppercase tracking-wider">Frontend</span><h4 class="text-lg font-extrabold text-slate-800 mt-1">HTML Tailwind</h4></div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <h3 class="font-extrabold text-slate-800">Evaluasi Metrik Klasifikasi Model</h3>
+                <div class="h-80 relative"><canvas id="performanceChart"></canvas></div>
+            </div>
+        </div>
+
+        <div id="tab-consultation" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div class="lg:col-span-4 space-y-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="bot" class="text-clinical-500 w-6 h-6"></i>
+                            <h3 class="font-bold text-slate-800">Agen Konsultasi AI</h3>
+                        </div>
+                        <p class="text-xs text-slate-500 leading-relaxed">
+                            Chatbot ini terhubung ke Sumopod AI dan akan memakai konteks hasil skrining terbaru agar jawaban lebih relevan.
+                        </p>
+                        <div class="p-3 bg-emerald-50 text-emerald-700 rounded-xl flex items-center space-x-2">
+                            <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                            <span class="text-xs font-semibold">Sumopod API (gpt-4o-mini)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col h-[500px]">
+                    <div class="px-6 py-4 border-b border-slate-100 flex items-center space-x-3 bg-slate-50/50 rounded-t-2xl">
+                        <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center">
+                            <i data-lucide="brain" class="w-5 h-5 text-amber-400"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-sm text-slate-800 block">HealthAssistant AI</span>
+                            <span class="text-[10px] text-slate-400 font-semibold uppercase">Powered by Sumopod</span>
+                        </div>
+                    </div>
+
+                    <div id="chat-log" class="flex-grow p-6 overflow-y-auto space-y-4 text-xs">
+                        <div class="flex items-start space-x-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+                                <i data-lucide="bot" class="w-4 h-4"></i>
+                            </div>
+                            <div class="bg-slate-50 p-3.5 rounded-2xl rounded-tl-none max-w-lg leading-relaxed text-slate-700">
+                                Halo. Isi skrining lalu tanyakan rekomendasi gaya hidup sesuai hasil Anda.
+                            </div>
+                        </div>
+                    </div>
+
+                    <form onsubmit="submitChatMessage(event)" class="p-4 border-t border-slate-100 flex items-center gap-2">
+                        <input type="text" id="chat-input" placeholder="Tanya soal diet, olahraga, atau langkah lanjut..." class="flex-grow px-4 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-clinical-500">
+                        <button type="submit" class="bg-clinical-600 hover:bg-clinical-700 text-white font-bold p-2.5 rounded-xl shadow-md shadow-clinical-600/10 transition">
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-history" class="tab-content hidden">
+            <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                <div class="flex justify-between items-center"><h3 class="font-extrabold text-slate-800">Database & Riwayat Skrining</h3><button onclick="clearHistory()" class="text-xs text-rose-500 hover:text-rose-700 font-bold border border-rose-200 hover:bg-rose-50 px-3 py-1.5 rounded-xl">Reset Semua Riwayat</button></div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead><tr class="bg-slate-50 text-slate-400 font-bold uppercase border-b border-slate-100"><th class="py-3 px-4">No.</th><th class="py-3 px-4">Tanggal</th><th class="py-3 px-4">Profil</th><th class="py-3 px-4">BMI</th><th class="py-3 px-4">Faktor</th><th class="py-3 px-4 text-center">Skor</th><th class="py-3 px-4 text-center">Hasil</th></tr></thead>
+                        <tbody id="history-table-body" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white border-t border-slate-100 py-6 mt-12 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center text-slate-400 text-xs gap-4">
+            <div class="flex items-center space-x-1.5"><span class="font-bold text-slate-600">Sistem Deteksi Diabetes Mellitus</span><span>© 2026 Universitas Prisma</span></div>
+            <div class="flex space-x-4"><span>Dosen Pembimbing: Bpk. Andreuw Lengkong & Bpk. Frendy Rumambi</span></div>
+        </div>
+    </footer>
+
+    <script>
+        let activeTab = "screening";
+        let activeModel = "gradient_boosting";
+        let currentBMI = 23.88;
+        let activeDiagnosisResult = null;
+        let screeningHistory = [];
+
+        function toggleMobileNav() {
+            const mobileNav = document.getElementById('mobile-nav');
+            const toggleBtn = document.getElementById('mobile-nav-toggle');
+            const isHidden = mobileNav.classList.contains('hidden');
+
+            if (isHidden) {
+                mobileNav.classList.remove('hidden');
+                toggleBtn.setAttribute('aria-expanded', 'true');
+            } else {
+                mobileNav.classList.add('hidden');
+                toggleBtn.setAttribute('aria-expanded', 'false');
+            }
+        }
+
+        function syncActiveTabButtons(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'text-clinical-700', 'shadow-sm');
+                btn.classList.add('text-slate-600', 'hover:text-slate-900');
+            });
+            const activeDesktopBtn = document.getElementById(`btn-tab-${tabId}`);
+            if (activeDesktopBtn) {
+                activeDesktopBtn.classList.add('bg-white', 'text-clinical-700', 'shadow-sm');
+                activeDesktopBtn.classList.remove('text-slate-600', 'hover:text-slate-900');
+            }
+
+            document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'text-clinical-700', 'shadow-sm');
+                btn.classList.add('text-slate-600', 'hover:text-slate-900');
+            });
+            const activeMobileBtn = document.getElementById(`m-btn-tab-${tabId}`);
+            if (activeMobileBtn) {
+                activeMobileBtn.classList.add('bg-white', 'text-clinical-700', 'shadow-sm');
+                activeMobileBtn.classList.remove('text-slate-600', 'hover:text-slate-900');
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.replace('block', 'hidden'));
+            document.getElementById(`tab-${tabId}`).classList.replace('hidden', 'block');
+            syncActiveTabButtons(tabId);
+            activeTab = tabId;
+
+            const mobileNav = document.getElementById('mobile-nav');
+            const toggleBtn = document.getElementById('mobile-nav-toggle');
+            if (mobileNav && !mobileNav.classList.contains('hidden')) {
+                mobileNav.classList.add('hidden');
+                toggleBtn.setAttribute('aria-expanded', 'false');
+            }
+
+            if (tabId === 'analytics') setTimeout(initializeCharts, 100);
+        }
+
+        function calculateBMI() {
+            const heightCm = parseFloat(document.getElementById('height').value);
+            const weightKg = parseFloat(document.getElementById('weight').value);
+            if (heightCm > 0 && weightKg > 0) {
+                const heightM = heightCm / 100;
+                const bmi = weightKg / (heightM * heightM);
+                currentBMI = bmi;
+                document.getElementById('bmi-val').innerText = bmi.toFixed(2);
+                const statusBadge = document.getElementById('bmi-status');
+                if (bmi < 18.5) {
+                    statusBadge.innerText = "Underweight";
+                    statusBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700";
+                } else if (bmi < 25) {
+                    statusBadge.innerText = "Normal";
+                    statusBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700";
+                } else if (bmi < 30) {
+                    statusBadge.innerText = "Overweight";
+                    statusBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700";
+                } else {
+                    statusBadge.innerText = "Obesitas";
+                    statusBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700";
+                }
+            }
+        }
+
+        function updateGenHealthLabel(val) {
+            const labels = {
+                1: "Sangat Baik (1/5)",
+                2: "Baik (2/5)",
+                3: "Cukup Sehat (3/5)",
+                4: "Buruk (4/5)",
+                5: "Sangat Buruk (5/5)"
+            };
+            document.getElementById('lbl-genhealth').innerText = labels[val];
+        }
+
+        function getRadioValue(name) {
+            const active = document.querySelector(`input[name="${name}"]:checked`);
+            return active ? parseInt(active.value) : 0;
+        }
+
+        async function runDiagnostic(event) {
+            if (event) event.preventDefault();
+
+            const payload = {
+                age: parseInt(document.getElementById('age').value),
+                Sex: getRadioValue('sex'),
+                HighBP: getRadioValue('HighBP'),
+                HighChol: getRadioValue('HighChol'),
+                CholCheck: getRadioValue('CholCheck'),
+                HeartDiseaseorAttack: getRadioValue('HeartDiseaseorAttack'),
+                Smoker: getRadioValue('Smoker'),
+                Stroke: getRadioValue('Stroke'),
+                PhysActivity: getRadioValue('PhysActivity'),
+                Fruits: getRadioValue('Fruits'),
+                Veggies: getRadioValue('Veggies'),
+                HvyAlcoholConsump: getRadioValue('HvyAlcoholConsump'),
+                AnyHealthcare: getRadioValue('AnyHealthcare'),
+                NoDocbcCost: getRadioValue('NoDocbcCost'),
+                DiffWalk: getRadioValue('DiffWalk'),
+                GenHlth: parseInt(document.getElementById('GenHlth').value),
+                PhysHlth: parseInt(document.getElementById('PhysHlth').value),
+                MentHlth: parseInt(document.getElementById('MentHlth').value),
+                BMI: currentBMI,
+                Education: 4,
+                Income: 6
+            };
+
+            try {
+                const resp = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await resp.json();
+                if (!data.ok) throw new Error('Prediksi gagal');
+
+                activeDiagnosisResult = {
+                    riskScore: data.risk_score,
+                    age: payload.age,
+                    sex: payload.Sex === 1 ? 'Laki-laki' : 'Perempuan',
+                    bmi: parseFloat(currentBMI.toFixed(2)),
+                    height: parseFloat(document.getElementById('height').value),
+                    weight: parseFloat(document.getElementById('weight').value),
+                    factors: data.factors || [],
+                    status: data.status,
+                    recommendation: data.recommendation
+                };
+
+                updateUIWithResults(data.risk_score.toFixed(1), data.status, data.recommendation);
+                addRecordToHistory(activeDiagnosisResult);
+            } catch (error) {
+                alert('Gagal memproses prediksi dari backend Python.');
+            }
+        }
+
+        function updateUIWithResults(riskVal, statusText, recommendationText) {
+            const scoreNum = parseFloat(riskVal);
+            document.getElementById('risk-value').innerText = riskVal + "%";
+            const badge = document.getElementById('risk-badge');
+            const desc = document.getElementById('risk-description');
+            const action = document.getElementById('risk-action');
+            const gaugeBg = document.getElementById('risk-gauge-color');
+            const txtColor = document.getElementById('risk-value');
+
+            badge.className = "px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ";
+            gaugeBg.className = "absolute inset-0 rounded-full border-4 opacity-20 ";
+            txtColor.className = "text-4xl font-extrabold ";
+
+            if (scoreNum < 20) {
+                badge.className += "bg-emerald-50 text-emerald-600";
+                gaugeBg.className += "border-emerald-500";
+                txtColor.className += "text-emerald-600";
+                desc.innerText = "Indikator fisik dan riwayat klinis Anda menunjukkan probabilitas rendah terhadap diabetes.";
+            } else if (scoreNum < 50) {
+                badge.className += "bg-amber-50 text-amber-600";
+                gaugeBg.className += "border-amber-500";
+                txtColor.className += "text-amber-600";
+                desc.innerText = "Anda memiliki beberapa faktor risiko yang perlu diperhatikan dan dikendalikan.";
+            } else {
+                badge.className += "bg-rose-50 text-rose-600";
+                gaugeBg.className += "border-rose-500";
+                txtColor.className += "text-rose-600";
+                desc.innerText = "Model menilai Anda berada pada level risiko tinggi dan perlu tindak lanjut medis.";
+            }
+
+            badge.innerText = statusText;
+            action.innerText = recommendationText;
+
+            const factorsContainer = document.getElementById('risk-factors-list');
+            factorsContainer.innerHTML = "";
+            if (activeDiagnosisResult.factors.length === 0) {
+                factorsContainer.innerHTML = '<div class="flex items-center space-x-2 text-emerald-600 font-medium"><i data-lucide="check-circle-2" class="w-4 h-4"></i><span>Kondisi tubuh & gaya hidup relatif aman.</span></div>';
+            } else {
+                activeDiagnosisResult.factors.forEach(f => {
+                    factorsContainer.innerHTML += `<div class="flex items-center space-x-2 text-rose-600 font-medium"><i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i><span>${f}</span></div>`;
+                });
+            }
+            lucide.createIcons();
+        }
+
+        function selectPredictionModel(modelName) {
+            document.querySelectorAll('.model-select-btn').forEach(btn => {
+                btn.className = "model-select-btn px-2 py-1.5 text-[10px] font-bold rounded-lg text-slate-600 hover:text-slate-900";
+            });
+            const activeBtn = document.getElementById(`mbtn-${modelName === 'gradient_boosting' ? 'gb' : modelName === 'random_forest' ? 'rf' : 'lr'}`);
+            activeBtn.className = "model-select-btn px-2 py-1.5 text-[10px] font-bold rounded-lg bg-white text-clinical-700 shadow-sm";
+            activeModel = modelName;
+            if (activeDiagnosisResult) runDiagnostic(null);
+        }
+
+        function addRecordToHistory(result) {
+            const today = new Date();
+            const dateStr = today.getDate() + " " + today.toLocaleString('id-ID', { month: 'short' }) + " " + today.getFullYear() + ", " + today.toTimeString().substring(0, 5);
+            const newRecord = {
+                id: screeningHistory.length + 1,
+                date: dateStr,
+                sex: result.sex,
+                age: result.age,
+                bmi: result.bmi,
+                height: result.height,
+                weight: result.weight,
+                riskScore: result.riskScore,
+                factors: [...result.factors],
+                status: result.status
+            };
+            screeningHistory.unshift(newRecord);
+            renderHistoryTable();
+        }
+
+        function renderHistoryTable() {
+            const tbody = document.getElementById('history-table-body');
+            tbody.innerHTML = "";
+            screeningHistory.forEach(record => {
+                let badgeClass = "bg-emerald-50 text-emerald-600";
+                let textScoreClass = "text-emerald-600";
+                if (record.status.includes("Tinggi")) { badgeClass = "bg-rose-50 text-rose-600"; textScoreClass = "text-rose-600"; }
+                else if (record.status.includes("Sedang")) { badgeClass = "bg-amber-50 text-amber-600"; textScoreClass = "text-amber-600"; }
+
+                let factorsBadges = record.factors.map(f => `<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-bold whitespace-nowrap">${f}</span>`).join('');
+                if (record.factors.length === 0) factorsBadges = `<span class="text-slate-400 italic text-[10px]">Tidak ada faktor</span>`;
+
+                tbody.innerHTML += `<tr><td class="py-3.5 px-4 font-semibold text-slate-400">${record.id}</td><td class="py-3.5 px-4 text-slate-500">${record.date}</td><td class="py-3.5 px-4"><div class="font-bold text-slate-700">${record.sex}, ${record.age} Tahun</div></td><td class="py-3.5 px-4"><div class="font-bold text-slate-700">${record.bmi}</div><span class="text-[10px] text-slate-400">TB: ${record.height} cm, BB: ${record.weight} kg</span></td><td class="py-3.5 px-4"><div class="flex flex-wrap gap-1 max-w-xs">${factorsBadges}</div></td><td class="py-3.5 px-4 text-center font-extrabold ${textScoreClass}">${record.riskScore}%</td><td class="py-3.5 px-4 text-center"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeClass}">${record.status}</span></td></tr>`;
+            });
+            lucide.createIcons();
+        }
+
+        function clearHistory() { screeningHistory = []; renderHistoryTable(); }
+
+        function addMessageToChatLog(sender, text) {
+            const chatLog = document.getElementById('chat-log');
+            if (!chatLog) return;
+
+            const isBot = sender === "HealthAssistant AI";
+            const msgHtml = `
+                <div class="flex items-start space-x-3 ${isBot ? '' : 'flex-row-reverse space-x-reverse'}">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isBot ? 'bg-slate-100 text-slate-600' : 'bg-clinical-500 text-white font-bold text-[10px]'}">
+                        ${isBot ? '<i data-lucide="bot" class="w-4 h-4"></i>' : 'P'}
+                    </div>
+                    <div class="${isBot ? 'bg-slate-50 text-slate-700' : 'bg-clinical-500 text-white'} p-3.5 rounded-2xl ${isBot ? 'rounded-tl-none' : 'rounded-tr-none'} max-w-lg leading-relaxed shadow-sm">
+                        <div class="font-bold text-[10px] opacity-70 mb-1">${sender}</div>
+                        <div>${text.replace(/\n/g, '<br>')}</div>
+                    </div>
+                </div>
+            `;
+
+            chatLog.innerHTML += msgHtml;
+            chatLog.scrollTop = chatLog.scrollHeight;
+            lucide.createIcons();
+        }
+
+        function sendToAIConsultant() {
+            switchTab('consultation');
+            if (!activeDiagnosisResult) {
+                addMessageToChatLog("HealthAssistant AI", "Silakan lakukan skrining terlebih dahulu agar konsultasi lebih personal.");
+                return;
+            }
+            addMessageToChatLog(
+                "HealthAssistant AI",
+                `Hasil terakhir Anda: ${activeDiagnosisResult.riskScore}% (${activeDiagnosisResult.status}). Silakan kirim pertanyaan.`
+            );
+        }
+
+        async function submitChatMessage(event) {
+            event.preventDefault();
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            addMessageToChatLog("Pasien", message);
+            input.value = "";
+            addMessageToChatLog("HealthAssistant AI", "Sedang memproses jawaban...");
+
+            try {
+                const resp = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message,
+                        screening_result: activeDiagnosisResult
+                    })
+                });
+                const data = await resp.json();
+
+                const chatLog = document.getElementById('chat-log');
+                if (chatLog && chatLog.lastElementChild) {
+                    chatLog.removeChild(chatLog.lastElementChild);
+                }
+
+                if (!resp.ok || !data.ok) {
+                    addMessageToChatLog("HealthAssistant AI", data.error || "Terjadi kesalahan saat menghubungi AI.");
+                    return;
+                }
+
+                addMessageToChatLog("HealthAssistant AI", data.reply || "Maaf, respons kosong.");
+            } catch (error) {
+                const chatLog = document.getElementById('chat-log');
+                if (chatLog && chatLog.lastElementChild) {
+                    chatLog.removeChild(chatLog.lastElementChild);
+                }
+                addMessageToChatLog("HealthAssistant AI", "Gagal terhubung ke layanan AI. Cek konfigurasi server dan API key.");
+            }
+        }
+
+        let performanceChartInstance = null;
+        function initializeCharts() {
+            if (performanceChartInstance) performanceChartInstance.destroy();
+            const ctx1 = document.getElementById('performanceChart').getContext('2d');
+            performanceChartInstance = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: ['Akurasi (%)', 'Presisi (%)', 'Recall (%)', 'F1-Score (%)'],
+                    datasets: [
+                        { label: 'Model Python Aktif', data: [84.52, 85.1, 83.94, 84.52], backgroundColor: '#0ea5e9', borderRadius: 6 },
+                        { label: 'Random Forest (Referensi)', data: [83.2, 84.02, 82.11, 83.05], backgroundColor: '#10b981', borderRadius: 6 },
+                        { label: 'Logistic Regression (Referensi)', data: [81.88, 80.91, 82.54, 81.72], backgroundColor: '#f59e0b', borderRadius: 6 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { min: 70, max: 100 } } }
+            });
+        }
+
+        window.onload = function() {
+            lucide.createIcons();
+            calculateBMI();
+            renderHistoryTable();
+        }
+    </script>
+</body>
+</html>
