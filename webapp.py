@@ -65,11 +65,14 @@ def _build_chat_prompt(user_message: str, screening_result: dict | None) -> str:
 
 
 @app.get("/")
+@app.get("/diabetes")
+@app.get("/diabetes/")
 def index():
     return render_template("index.html")
 
 
 @app.post("/api/predict")
+@app.post("/diabetes/api/predict")
 def predict():
     payload = request.get_json(silent=True) or {}
 
@@ -142,6 +145,7 @@ def predict():
 
 
 @app.post("/api/chat")
+@app.post("/diabetes/api/chat")
 def chat():
     payload = request.get_json(silent=True) or {}
     user_message = str(payload.get("message", "")).strip()
