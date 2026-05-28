@@ -6,7 +6,7 @@ import numpy
 import numpy.random._pickle as nrp
 
 
-MODEL_PATH = "model_diabetes_terbaik.pkl"
+MODEL_PATH = "models/model_diabetes_terbaik.pkl"
 
 
 def install_numpy_core_aliases() -> None:

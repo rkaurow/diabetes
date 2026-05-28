@@ -1,4 +1,4 @@
-MODEL_PATH = "model_diabetes_terbaik.pkl"
+MODEL_PATH = "models/model_diabetes_terbaik.pkl"
 
 DEFAULT_FEATURE_ORDER = [
     "HighBP",
