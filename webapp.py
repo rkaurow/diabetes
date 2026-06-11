@@ -19,6 +19,22 @@ load_dotenv(BASE_DIR / ".env")
 app = Flask(__name__, template_folder="templates")
 
 
+def _to_int(value, default: int, lo: int, hi: int) -> int:
+    try:
+        num = int(float(value))
+    except (TypeError, ValueError):
+        num = default
+    return max(lo, min(hi, num))
+
+
+def _to_float(value, default: float, lo: float, hi: float) -> float:
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        num = default
+    return max(lo, min(hi, num))
+
+
 def _risk_summary(risk_pct: float) -> tuple[str, str]:
     if risk_pct < 20:
         return "Risiko Rendah (Aman)", (
@@ -74,37 +90,45 @@ def index():
 @app.post("/api/predict")
 @app.post("/diabetes/api/predict")
 def predict():
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"ok": False, "error": "Payload JSON tidak valid."}), 400
 
-    age_real = int(payload.get("age", 35))
-    age_cdc = age_to_cdc_bucket(max(age_real, 1))
-    sex = int(payload.get("Sex", 0))
+    age_real = _to_int(payload.get("age"), 35, 1, 120)
+    age_cdc = age_to_cdc_bucket(age_real)
+    sex = _to_int(payload.get("Sex"), 0, 0, 1)
 
     values = {
-        "HighBP": int(payload.get("HighBP", 0)),
-        "HighChol": int(payload.get("HighChol", 0)),
-        "CholCheck": int(payload.get("CholCheck", 1)),
-        "BMI": float(payload.get("BMI", 23.0)),
-        "Smoker": int(payload.get("Smoker", 0)),
-        "Stroke": int(payload.get("Stroke", 0)),
-        "HeartDiseaseorAttack": int(payload.get("HeartDiseaseorAttack", 0)),
-        "PhysActivity": int(payload.get("PhysActivity", 1)),
-        "Fruits": int(payload.get("Fruits", 1)),
-        "Veggies": int(payload.get("Veggies", 1)),
-        "HvyAlcoholConsump": int(payload.get("HvyAlcoholConsump", 0)),
-        "AnyHealthcare": int(payload.get("AnyHealthcare", 1)),
-        "NoDocbcCost": int(payload.get("NoDocbcCost", 0)),
-        "GenHlth": int(payload.get("GenHlth", 3)),
-        "MentHlth": int(payload.get("MentHlth", 0)),
-        "PhysHlth": int(payload.get("PhysHlth", 0)),
-        "DiffWalk": int(payload.get("DiffWalk", 0)),
+        "HighBP": _to_int(payload.get("HighBP"), 0, 0, 1),
+        "HighChol": _to_int(payload.get("HighChol"), 0, 0, 1),
+        "CholCheck": _to_int(payload.get("CholCheck"), 1, 0, 1),
+        "BMI": _to_float(payload.get("BMI"), 23.0, 10.0, 80.0),
+        "Smoker": _to_int(payload.get("Smoker"), 0, 0, 1),
+        "Stroke": _to_int(payload.get("Stroke"), 0, 0, 1),
+        "HeartDiseaseorAttack": _to_int(payload.get("HeartDiseaseorAttack"), 0, 0, 1),
+        "PhysActivity": _to_int(payload.get("PhysActivity"), 1, 0, 1),
+        "Fruits": _to_int(payload.get("Fruits"), 1, 0, 1),
+        "Veggies": _to_int(payload.get("Veggies"), 1, 0, 1),
+        "HvyAlcoholConsump": _to_int(payload.get("HvyAlcoholConsump"), 0, 0, 1),
+        "AnyHealthcare": _to_int(payload.get("AnyHealthcare"), 1, 0, 1),
+        "NoDocbcCost": _to_int(payload.get("NoDocbcCost"), 0, 0, 1),
+        "GenHlth": _to_int(payload.get("GenHlth"), 3, 1, 5),
+        "MentHlth": _to_int(payload.get("MentHlth"), 0, 0, 30),
+        "PhysHlth": _to_int(payload.get("PhysHlth"), 0, 0, 30),
+        "DiffWalk": _to_int(payload.get("DiffWalk"), 0, 0, 1),
         "Sex": sex,
         "Age": age_cdc,
-        "Education": int(payload.get("Education", 4)),
-        "Income": int(payload.get("Income", 6)),
+        "Education": _to_int(payload.get("Education"), 4, 1, 6),
+        "Income": _to_int(payload.get("Income"), 6, 1, 8),
     }
 
-    model = load_model(str(MODEL_FILE))
+    try:
+        model = load_model(str(MODEL_FILE))
+    except FileNotFoundError:
+        return (
+            jsonify({"ok": False, "error": f"File model tidak ditemukan: {MODEL_PATH}"}),
+            503,
+        )
     feature_order = list(getattr(model, "feature_names_in_", DEFAULT_FEATURE_ORDER))
 
     row = [values.get(feature, 0) for feature in feature_order]
@@ -149,7 +173,11 @@ def predict():
 def chat():
     payload = request.get_json(silent=True) or {}
     user_message = str(payload.get("message", "")).strip()
+    if len(user_message) > 2000:
+        user_message = user_message[:2000]
     screening_result = payload.get("screening_result")
+    if not isinstance(screening_result, dict):
+        screening_result = None
 
     if not user_message:
         return jsonify({"ok": False, "error": "Pesan tidak boleh kosong."}), 400

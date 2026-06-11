@@ -548,8 +548,22 @@
                 overlay.classList.add('opacity-100');
             }
 
+            const ageVal = parseInt(document.getElementById('age').value);
+            const heightVal = parseFloat(document.getElementById('height').value);
+            const weightVal = parseFloat(document.getElementById('weight').value);
+            if (isNaN(ageVal) || isNaN(heightVal) || isNaN(weightVal)) {
+                alert('Mohon isi umur, tinggi, dan berat badan dengan angka yang valid.');
+                if (overlay) { overlay.classList.remove('opacity-100'); overlay.classList.add('hidden'); }
+                if (!isModelSwitch && submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+                    submitBtn.innerHTML = originalBtnContent;
+                }
+                return;
+            }
+
             const payload = {
-                age: parseInt(document.getElementById('age').value),
+                age: ageVal,
                 Sex: getRadioValue('sex'),
                 HighBP: getRadioValue('HighBP'),
                 HighChol: getRadioValue('HighChol'),
@@ -587,7 +601,7 @@
                 ]);
 
                 const data = await resp.json();
-                if (!data.ok) throw new Error('Prediksi gagal');
+                if (!data.ok) throw new Error(data.error || 'Prediksi gagal');
 
                 // Terapkan penyesuaian skor risiko berbasis Model Algoritma Pembanding (GB, RF, LR)
                 let scoreGB = Math.max(0, Math.min(100, parseFloat(data.risk_score.toFixed(2))));
@@ -640,7 +654,7 @@
                 }
             } catch (error) {
                 console.error(error);
-                alert('Gagal memproses prediksi dari backend Python.');
+                alert(error.message || 'Gagal memproses prediksi dari backend Python.');
             } finally {
                 // Restore loading states
                 if (overlay) {

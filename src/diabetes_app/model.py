@@ -1,8 +1,8 @@
 import sys
+from functools import lru_cache
 
 import joblib
 import numpy as np
-import streamlit as st
 
 
 def _install_numpy_module_aliases() -> None:
@@ -32,7 +32,7 @@ def _load_model_with_numpy_compat(path: str):
         np_pickle.__bit_generator_ctor = original_ctor
 
 
-@st.cache_resource
+@lru_cache(maxsize=2)
 def load_model(path: str):
     try:
         return joblib.load(path)
