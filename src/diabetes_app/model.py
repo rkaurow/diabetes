@@ -18,6 +18,7 @@ def _load_model_with_numpy_compat(path: str):
     # Compatibility for pickles saved with environments that serialize BitGenerator as class objects.
     import numpy.random._pickle as np_pickle
 
+    _install_numpy_module_aliases()
     original_ctor = np_pickle.__bit_generator_ctor
 
     def compat_ctor(bit_generator_name="MT19937"):
@@ -35,12 +36,11 @@ def _load_model_with_numpy_compat(path: str):
 @lru_cache(maxsize=2)
 def load_model(path: str):
     try:
-        return joblib.load(path)
+        return _load_model_with_numpy_compat(path)
     except ModuleNotFoundError as exc:
-        if not exc.name or not exc.name.startswith("numpy._core"):
-            raise
-        _install_numpy_module_aliases()
-        return joblib.load(path)
+        if exc.name and exc.name.startswith("numpy._core"):
+            return _load_model_with_numpy_compat(path)
+        raise
     except ValueError as exc:
         if "is not a known BitGenerator module" not in str(exc):
             raise

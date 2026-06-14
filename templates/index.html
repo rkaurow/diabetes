@@ -425,6 +425,14 @@
         let activeDiagnosisResult = null;
         let screeningHistory = [];
 
+        async function readJsonResponse(resp) {
+            const contentType = resp.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                return await resp.json();
+            }
+            throw new Error('Server mengembalikan respons non-JSON. Coba refresh halaman lalu ulangi skrining.');
+        }
+
         function toggleMobileNav() {
             const mobileNav = document.getElementById('mobile-nav');
             const toggleBtn = document.getElementById('mobile-nav-toggle');
@@ -600,7 +608,7 @@
                     delayPromise
                 ]);
 
-                const data = await resp.json();
+                const data = await readJsonResponse(resp);
                 if (!data.ok) throw new Error(data.error || 'Prediksi gagal');
 
                 // Terapkan penyesuaian skor risiko berbasis Model Algoritma Pembanding (GB, RF, LR)
@@ -808,7 +816,7 @@
                         screening_result: activeDiagnosisResult
                     })
                 });
-                const data = await resp.json();
+                const data = await readJsonResponse(resp);
 
                 const chatLog = document.getElementById('chat-log');
                 if (chatLog && chatLog.lastElementChild) {
