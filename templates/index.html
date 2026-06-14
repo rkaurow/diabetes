@@ -43,6 +43,59 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
+        /* Gauge lingkaran progres yang terisi mulus mengikuti skor risiko */
+        @property --gauge-p {
+            syntax: '<number>';
+            inherits: false;
+            initial-value: 0;
+        }
+
+        .gauge-ring {
+            background: conic-gradient(var(--gauge-color, #10b981) calc(var(--gauge-p) * 1%), #eef2f6 0);
+            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
+            transition: --gauge-p 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        /* Hasil skrining muncul lembut */
+        @keyframes resultFade {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-fade {
+            animation: resultFade 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        /* Overlay loading: konten masuk dengan halus */
+        #result-loading-overlay>div {
+            transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        #result-loading-overlay:not(.opacity-100)>div {
+            opacity: 0;
+            transform: scale(0.96);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            .gauge-ring,
+            #result-loading-overlay>div {
+                transition: none;
+            }
+
+            .result-fade {
+                animation: none;
+            }
+        }
+
         @media print {
             .no-print {
                 display: none !important;
@@ -413,21 +466,11 @@
                         class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm sticky top-24 print-card relative overflow-hidden">
                         <!-- Loading Overlay -->
                         <div id="result-loading-overlay"
-                            class="absolute inset-0 bg-white/90 backdrop-blur-[1px] z-20 flex flex-col items-center justify-center hidden opacity-0 transition-all duration-300">
-                            <div class="flex flex-col items-center space-y-4">
-                                <div class="relative flex items-center justify-center">
-                                    <div
-                                        class="w-12 h-12 rounded-full border-4 border-clinical-100 border-t-clinical-500 animate-spin">
-                                    </div>
-                                    <i data-lucide="activity"
-                                        class="absolute w-5 h-5 text-clinical-500 animate-pulse"></i>
+                            class="absolute inset-0 bg-white z-20 flex flex-col items-center justify-center hidden opacity-0 transition-opacity duration-300 rounded-2xl">
+                            <div class="flex flex-col items-center space-y-3">
+                                <div class="w-9 h-9 rounded-full border-[3px] border-slate-200 border-t-clinical-500 animate-spin">
                                 </div>
-                                <div class="text-center space-y-1">
-                                    <span class="text-xs font-bold text-slate-700 block tracking-wide">Meningkatkan
-                                        Resolusi Medis...</span>
-                                    <span class="text-[10px] text-slate-400 block font-medium">Memproses dengan Model
-                                        Python</span>
-                                </div>
+                                <span class="text-xs font-semibold text-slate-500">Menganalisis…</span>
                             </div>
                         </div>
 
@@ -466,9 +509,9 @@
 
                         <div class="flex flex-col items-center justify-center py-6 border-b border-slate-100">
                             <div
-                                class="relative w-36 h-36 flex items-center justify-center rounded-full bg-slate-50 border-4 border-slate-100 shadow-inner">
+                                class="relative w-36 h-36 flex items-center justify-center rounded-full bg-slate-50 shadow-inner">
                                 <div id="risk-gauge-color"
-                                    class="absolute inset-0 rounded-full border-4 border-emerald-500 opacity-20"></div>
+                                    class="gauge-ring absolute inset-0 rounded-full" style="--gauge-color:#10b981;--gauge-p:4.5"></div>
                                 <div class="text-center z-10">
                                     <span id="risk-value" class="text-4xl font-extrabold text-emerald-600">4.5%</span>
                                     <div class="text-[9px] font-bold text-slate-400 tracking-widest uppercase mt-0.5"
@@ -515,67 +558,6 @@
                         </div>
                     </div>
 
-                    <!-- Card Penjelasan 3 Model ML (Penjelasan Mengapa Ada 3 Hasil) -->
-                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4 no-print mt-4">
-                        <div class="flex items-center space-x-2 border-b border-slate-50 pb-2">
-                            <div class="p-1.5 bg-clinical-50 text-clinical-600 rounded-lg"><i data-lucide="help-circle"
-                                    class="w-4.5 h-4.5 animate-pulse"></i></div>
-                            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Mengapa Ada 3 Hasil
-                                Model ML?</h3>
-                        </div>
-                        <p class="text-[11px] text-slate-500 leading-relaxed">
-                            Sistem skrining tugas akhir ini dikembangkan dengan membandingkan tiga algoritma Machine
-                            Learning berbeda dari dataset medis CDC. Hal ini bertujuan untuk menganalisis akurasi
-                            terbaik:
-                        </p>
-                        <div class="space-y-3">
-                            <div
-                                class="p-2.5 rounded-xl bg-sky-50/40 border border-sky-100/50 flex gap-2.5 hover:bg-sky-50/70 transition">
-                                <div
-                                    class="w-6.5 h-6.5 rounded-full bg-clinical-500 text-white flex items-center justify-center text-[9px] font-bold shrink-0">
-                                    GB</div>
-                                <div class="space-y-0.5">
-                                    <h4 class="text-[11px] font-bold text-slate-800">Gradient Boosting (Model Utama)
-                                    </h4>
-                                    <p class="text-[10px] text-slate-500 leading-relaxed">
-                                        Akurasi <strong>84.52%</strong>. Merupakan model terbaik yang dideploy secara
-                                        penuh sebagai acuan medis utama karena performanya yang unggul dalam mendeteksi
-                                        pola penyakit secara non-linear.
-                                        <span class="block mt-1 text-[9px] font-semibold text-clinical-600">Status:
-                                            Aktif sebagai Sistem Deteksi Utama</span>
-                                    </p>
-                                </div>
-                            </div>
-                            <div
-                                class="p-2.5 rounded-xl bg-emerald-50/40 border border-emerald-100/50 flex gap-2.5 hover:bg-emerald-50/70 transition">
-                                <div
-                                    class="w-6.5 h-6.5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px] font-bold shrink-0">
-                                    RF</div>
-                                <div class="space-y-0.5">
-                                    <h4 class="text-[11px] font-bold text-slate-800">Random Forest (Model Pembanding)
-                                    </h4>
-                                    <p class="text-[10px] text-slate-500 leading-relaxed">
-                                        Akurasi <strong>83.20%</strong>. Algoritma ensembel bagging untuk mengurangi
-                                        overfitting dan menjaga stabilitas keputusan prediksi.
-                                    </p>
-                                </div>
-                            </div>
-                            <div
-                                class="p-2.5 rounded-xl bg-amber-50/40 border border-amber-100/50 flex gap-2.5 hover:bg-amber-50/70 transition">
-                                <div
-                                    class="w-6.5 h-6.5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[9px] font-bold shrink-0">
-                                    LR</div>
-                                <div class="space-y-0.5">
-                                    <h4 class="text-[11px] font-bold text-slate-800">Logistic Regression (Model
-                                        Pembanding)</h4>
-                                    <p class="text-[10px] text-slate-500 leading-relaxed">
-                                        Akurasi <strong>81.88%</strong>. Pendekatan statistik parametrik linier klasik
-                                        yang digunakan sebagai garis dasar (baseline) pembanding efisiensi komputasi.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -714,6 +696,25 @@
         let activeDiagnosisResult = null;
         let screeningHistory = [];
 
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        // Animasi count-up halus untuk angka skor
+        function animateCount(el, to, { suffix = '%', dur = 900, decimals = 1 } = {}) {
+            if (!el) return;
+            const target = Number(to);
+            if (!isFinite(target)) { el.innerText = "--" + suffix; return; }
+            if (prefersReducedMotion) { el.innerText = target.toFixed(decimals) + suffix; return; }
+            const start = performance.now();
+            const ease = t => 1 - Math.pow(1 - t, 3);
+            function frame(now) {
+                const t = Math.min(1, (now - start) / dur);
+                el.innerText = (target * ease(t)).toFixed(decimals) + suffix;
+                if (t < 1) requestAnimationFrame(frame);
+                else el.innerText = target.toFixed(decimals) + suffix;
+            }
+            requestAnimationFrame(frame);
+        }
+
         async function readJsonResponse(resp) {
             const contentType = resp.headers.get('content-type') || '';
             if (contentType.includes('application/json')) {
@@ -830,11 +831,11 @@
                 submitBtn.disabled = true;
                 submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
                 submitBtn.innerHTML = `
-                    <svg class="animate-spin -ml-1 mr-2 h-4.5 w-4.5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Menganalisis Parameter...</span>
+                    <span>Menganalisis…</span>
                 `;
             }
 
@@ -907,9 +908,9 @@
                 let scoreRF = modelScores.rf != null ? clampScore(modelScores.rf) : null;
                 let scoreLR = modelScores.lr != null ? clampScore(modelScores.lr) : null;
 
-                document.getElementById('score-gb').innerText = scoreGB + "%";
-                document.getElementById('score-rf').innerText = (scoreRF != null ? scoreRF : "--") + "%";
-                document.getElementById('score-lr').innerText = (scoreLR != null ? scoreLR : "--") + "%";
+                animateCount(document.getElementById('score-gb'), scoreGB, { decimals: 2 });
+                animateCount(document.getElementById('score-rf'), scoreRF, { decimals: 2 });
+                animateCount(document.getElementById('score-lr'), scoreLR, { decimals: 2 });
 
                 // 3 model dilatih -> 1 dipilih: skor utama mengikuti model terbaik (Gradient Boosting)
                 let adjustedScore = clampScore(data.risk_score);
@@ -967,7 +968,6 @@
 
         function updateUIWithResults(riskVal, statusText, recommendationText, modelLabel) {
             const scoreNum = parseFloat(riskVal);
-            document.getElementById('risk-value').innerText = riskVal + "%";
             document.getElementById('risk-value-label').innerText = "Skor Risiko";
 
             const badge = document.getElementById('risk-badge');
@@ -977,30 +977,38 @@
             const txtColor = document.getElementById('risk-value');
 
             badge.className = "px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ";
-            gaugeBg.className = "absolute inset-0 rounded-full border-4 opacity-20 ";
             txtColor.className = "text-4xl font-extrabold ";
 
+            let ringColor;
             if (scoreNum < 20) {
+                ringColor = "#10b981";
                 badge.className += "bg-emerald-50 text-emerald-600";
-                gaugeBg.className += "border-emerald-500";
                 txtColor.className += "text-emerald-600";
                 desc.innerText = "Indikator fisik dan riwayat klinis Anda menunjukkan probabilitas rendah terhadap diabetes.";
             } else if (scoreNum < 50) {
+                ringColor = "#f59e0b";
                 badge.className += "bg-amber-50 text-amber-600";
-                gaugeBg.className += "border-amber-500";
                 txtColor.className += "text-amber-600";
                 desc.innerText = "Anda memiliki beberapa faktor risiko yang perlu diperhatikan dan dikendalikan.";
             } else {
+                ringColor = "#f43f5e";
                 badge.className += "bg-rose-50 text-rose-600";
-                gaugeBg.className += "border-rose-500";
                 txtColor.className += "text-rose-600";
                 desc.innerText = "Model menilai Anda berada pada level risiko tinggi dan perlu tindak lanjut medis.";
             }
+
+            // Isi gauge lingkaran secara mulus + count-up angka
+            gaugeBg.style.setProperty('--gauge-color', ringColor);
+            requestAnimationFrame(() => gaugeBg.style.setProperty('--gauge-p', scoreNum));
+            animateCount(txtColor, scoreNum, { decimals: 1 });
 
             badge.innerText = statusText;
             action.innerText = recommendationText;
 
             const factorsContainer = document.getElementById('risk-factors-list');
+            factorsContainer.classList.remove('result-fade');
+            void factorsContainer.offsetWidth;
+            if (!prefersReducedMotion) factorsContainer.classList.add('result-fade');
             factorsContainer.innerHTML = "";
             if (activeDiagnosisResult.factors.length === 0) {
                 factorsContainer.innerHTML = '<div class="flex items-center space-x-2 text-emerald-600 font-medium"><i data-lucide="check-circle-2" class="w-4 h-4"></i><span>Kondisi tubuh & gaya hidup relatif aman.</span></div>';
