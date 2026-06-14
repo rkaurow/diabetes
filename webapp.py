@@ -129,6 +129,9 @@ def predict():
             jsonify({"ok": False, "error": f"File model tidak ditemukan: {MODEL_PATH}"}),
             503,
         )
+    except Exception:
+        app.logger.exception("Failed to load diabetes model")
+        return jsonify({"ok": False, "error": "Model skrining gagal dimuat."}), 500
     feature_order = list(getattr(model, "feature_names_in_", DEFAULT_FEATURE_ORDER))
 
     row = [values.get(feature, 0) for feature in feature_order]
@@ -183,6 +186,7 @@ def chat():
         return jsonify({"ok": False, "error": "Pesan tidak boleh kosong."}), 400
 
     api_key = os.getenv("SUMOPOD_API_KEY", "").strip()
+    model = os.getenv("SUMOPOD_MODEL", "gpt-4.1-mini").strip() or "gpt-4.1-mini"
     if not api_key:
         return (
             jsonify(
@@ -208,7 +212,7 @@ def chat():
                 "Authorization": f"Bearer {api_key}",
             },
             json={
-                "model": "gpt-4o-mini",
+                "model": model,
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt},
@@ -247,4 +251,4 @@ def chat():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=os.getenv("FLASK_DEBUG", "0") == "1")
