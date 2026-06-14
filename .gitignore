@@ -12,6 +12,9 @@ ENV/
 .env
 .envrc
 
+# Dataset (besar; regenerate via scripts/train_models.py / ucimlrepo id=891)
+cdc_diabetes_health_indicators.csv
+
 # OS
 .DS_Store
 __MACOSX/

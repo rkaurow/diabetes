@@ -1,0 +1,26 @@
+{
+  "best": "gb",
+  "models": {
+    "gb": {
+      "label": "Gradient Boosting",
+      "accuracy": 74.93,
+      "precision": 75.28,
+      "recall": 74.93,
+      "f1": 74.87
+    },
+    "rf": {
+      "label": "Random Forest",
+      "accuracy": 74.67,
+      "precision": 75.04,
+      "recall": 74.67,
+      "f1": 74.61
+    },
+    "lr": {
+      "label": "Logistic Regression",
+      "accuracy": 74.22,
+      "precision": 74.35,
+      "recall": 74.22,
+      "f1": 74.2
+    }
+  }
+}

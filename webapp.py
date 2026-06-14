@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -8,12 +9,19 @@ import requests
 from flask import Flask, jsonify, render_template, request
 from dotenv import load_dotenv
 
-from src.diabetes_app.config import DEFAULT_FEATURE_ORDER, MODEL_PATH
+from src.diabetes_app.config import (
+    BEST_MODEL_KEY,
+    DEFAULT_FEATURE_ORDER,
+    METRICS_PATH,
+    MODEL_FILES,
+    MODEL_PATH,
+)
 from src.diabetes_app.features import age_to_cdc_bucket
 from src.diabetes_app.model import load_model, predict_risk_probability
 
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_FILE = BASE_DIR / MODEL_PATH
+METRICS_FILE = BASE_DIR / METRICS_PATH
 load_dotenv(BASE_DIR / ".env")
 
 app = Flask(__name__, template_folder="templates")
@@ -122,27 +130,44 @@ def predict():
         "Income": _to_int(payload.get("Income"), 6, 1, 8),
     }
 
-    try:
-        model = load_model(str(MODEL_FILE))
-    except FileNotFoundError:
-        return (
-            jsonify({"ok": False, "error": f"File model tidak ditemukan: {MODEL_PATH}"}),
-            503,
-        )
-    except Exception:
-        app.logger.exception("Failed to load diabetes model")
-        return jsonify({"ok": False, "error": "Model skrining gagal dimuat."}), 500
-    feature_order = list(getattr(model, "feature_names_in_", DEFAULT_FEATURE_ORDER))
+    # Muat ketiga model nyata; model utama (BEST) wajib ada untuk skor risiko.
+    models = {}
+    for key, rel_path in MODEL_FILES.items():
+        try:
+            models[key] = load_model(str(BASE_DIR / rel_path))
+        except FileNotFoundError:
+            if key == BEST_MODEL_KEY:
+                # Fallback ke nama lama bila file per-model belum digenerate.
+                try:
+                    models[key] = load_model(str(MODEL_FILE))
+                except FileNotFoundError:
+                    return (
+                        jsonify({"ok": False, "error": f"File model tidak ditemukan: {rel_path}"}),
+                        503,
+                    )
+                except Exception:
+                    app.logger.exception("Failed to load fallback diabetes model")
+                    return jsonify({"ok": False, "error": "Model skrining gagal dimuat."}), 500
+        except Exception:
+            app.logger.exception("Failed to load model %s", key)
+            if key == BEST_MODEL_KEY:
+                return jsonify({"ok": False, "error": "Model skrining gagal dimuat."}), 500
 
+    best_model = models[BEST_MODEL_KEY]
+    feature_order = list(getattr(best_model, "feature_names_in_", DEFAULT_FEATURE_ORDER))
     row = [values.get(feature, 0) for feature in feature_order]
     input_df = pd.DataFrame([row], columns=feature_order)
 
-    pred = int(model.predict(input_df)[0])
-    prob = predict_risk_probability(model, input_df)
-    if prob is None:
-        prob = 0.75 if pred == 1 else 0.15
+    # Probabilitas risiko (%) untuk tiap model yang berhasil dimuat.
+    scores = {}
+    for key, model in models.items():
+        prob = predict_risk_probability(model, input_df)
+        if prob is None:
+            prob = 0.75 if int(model.predict(input_df)[0]) == 1 else 0.15
+        scores[key] = round(float(prob) * 100.0, 2)
 
-    risk_pct = float(prob) * 100.0
+    pred = int(best_model.predict(input_df)[0])
+    risk_pct = scores[BEST_MODEL_KEY]
     status, recommendation = _risk_summary(risk_pct)
 
     factors = []
@@ -163,12 +188,26 @@ def predict():
         {
             "ok": True,
             "risk_score": round(risk_pct, 2),
+            "scores": scores,
+            "best_model": BEST_MODEL_KEY,
             "status": status,
             "recommendation": recommendation,
             "factors": factors,
             "prediction": pred,
         }
     )
+
+
+@app.get("/api/metrics")
+@app.get("/diabetes/api/metrics")
+def metrics():
+    try:
+        data = json.loads(METRICS_FILE.read_text())
+    except FileNotFoundError:
+        return jsonify({"ok": False, "error": "Metrik model belum tersedia."}), 404
+    except (ValueError, OSError):
+        return jsonify({"ok": False, "error": "Metrik model gagal dibaca."}), 500
+    return jsonify({"ok": True, **data})
 
 
 @app.post("/api/chat")

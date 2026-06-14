@@ -447,7 +447,7 @@
                                 Model Aktif dan Pembanding</label>
                             <div class="grid grid-cols-3 gap-2 text-center">
                                 <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                                    <div class="text-[10px] font-bold text-slate-500 uppercase">Gradient Boosting</div>
+                                    <div class="text-[10px] font-bold text-slate-500 uppercase">GB</div>
                                     <div id="score-gb" class="text-sm md:text-base font-extrabold text-clinical-600">--%
                                     </div>
                                 </div>
@@ -472,7 +472,7 @@
                                 <div class="text-center z-10">
                                     <span id="risk-value" class="text-4xl font-extrabold text-emerald-600">4.5%</span>
                                     <div class="text-[9px] font-bold text-slate-400 tracking-widest uppercase mt-0.5"
-                                        id="risk-value-label">Skor Risiko (Gradient Boosting)</div>
+                                        id="risk-value-label">Skor Risiko</div>
                                 </div>
                             </div>
                             <div class="mt-4 text-center">
@@ -900,19 +900,19 @@
                 const data = await readJsonResponse(resp);
                 if (!data.ok) throw new Error(data.error || 'Prediksi gagal');
 
-                // Terapkan penyesuaian skor risiko berbasis model aktif Gradient Boosting
-                let scoreGB = Math.max(0, Math.min(100, parseFloat(data.risk_score.toFixed(2))));
-                let scoreRF = Math.max(0, Math.min(100, parseFloat((data.risk_score * 0.98 + 0.3).toFixed(2))));
-                let scoreLR = Math.max(0, Math.min(100, parseFloat((data.risk_score * 0.95 + 1.1).toFixed(2))));
+                // Skor nyata dari 3 model di backend (gb/rf/lr), bukan rumus turunan
+                const modelScores = data.scores || {};
+                const clampScore = v => Math.max(0, Math.min(100, parseFloat(Number(v).toFixed(2))));
+                let scoreGB = clampScore(modelScores.gb != null ? modelScores.gb : data.risk_score);
+                let scoreRF = modelScores.rf != null ? clampScore(modelScores.rf) : null;
+                let scoreLR = modelScores.lr != null ? clampScore(modelScores.lr) : null;
 
-                // Set the scores to UI
                 document.getElementById('score-gb').innerText = scoreGB + "%";
-                document.getElementById('score-rf').innerText = scoreRF + "%";
-                document.getElementById('score-lr').innerText = scoreLR + "%";
+                document.getElementById('score-rf').innerText = (scoreRF != null ? scoreRF : "--") + "%";
+                document.getElementById('score-lr').innerText = (scoreLR != null ? scoreLR : "--") + "%";
 
-                // Skor utama mengikuti model aktif Gradient Boosting
-                let adjustedScore = scoreGB;
-                let activeModelLabel = "Gradient Boosting";
+                // 3 model dilatih -> 1 dipilih: skor utama mengikuti model terbaik (Gradient Boosting)
+                let adjustedScore = clampScore(data.risk_score);
 
                 // Perbarui status dan rekomendasi klinis secara lokal untuk hasil rata-rata
                 let status = data.status;
@@ -942,7 +942,7 @@
                 };
 
                 // Perbarui UI hasil
-                updateUIWithResults(adjustedScore.toFixed(1), status, recommendation, activeModelLabel);
+                updateUIWithResults(adjustedScore.toFixed(1), status, recommendation);
 
                 // Tambah riwayat hanya saat diagnosa baru (Fresh form submit), bukan saat model switch!
                 if (!isModelSwitch) {
@@ -968,7 +968,7 @@
         function updateUIWithResults(riskVal, statusText, recommendationText, modelLabel) {
             const scoreNum = parseFloat(riskVal);
             document.getElementById('risk-value').innerText = riskVal + "%";
-            document.getElementById('risk-value-label').innerText = "Skor Risiko (" + (modelLabel || "Gradient Boosting") + ")";
+            document.getElementById('risk-value-label').innerText = "Skor Risiko";
 
             const badge = document.getElementById('risk-badge');
             const desc = document.getElementById('risk-description');
@@ -1127,21 +1127,43 @@
         }
 
         let performanceChartInstance = null;
-        function initializeCharts() {
-            if (performanceChartInstance) performanceChartInstance.destroy();
+
+        // Fallback = metrik nyata hasil pelatihan terakhir (lihat models/metrics.json)
+        const FALLBACK_METRICS = {
+            gb: { label: 'Gradient Boost', accuracy: 74.93, precision: 75.28, recall: 74.93, f1: 74.87 },
+            lr: { label: 'Logistic Regression', accuracy: 74.22, precision: 74.35, recall: 74.22, f1: 74.20 },
+            rf: { label: 'Random Forest', accuracy: 73.53, precision: 73.81, recall: 73.53, f1: 73.49 }
+        };
+
+        function renderChart(metrics) {
             const ctx1 = document.getElementById('performanceChart').getContext('2d');
+            if (performanceChartInstance) performanceChartInstance.destroy();
+            const style = { gb: '#0ea5e9', rf: '#10b981', lr: '#f59e0b' };
+            const order = ['gb', 'rf', 'lr'];
+            const datasets = order.filter(k => metrics[k]).map(k => {
+                const m = metrics[k];
+                return {
+                    label: m.label || k.toUpperCase(),
+                    data: [m.accuracy, m.precision, m.recall, m.f1],
+                    backgroundColor: style[k],
+                    borderRadius: 6
+                };
+            });
             performanceChartInstance = new Chart(ctx1, {
                 type: 'bar',
-                data: {
-                    labels: ['Akurasi (%)', 'Presisi (%)', 'Recall (%)', 'F1-Score (%)'],
-                    datasets: [
-                        { label: 'Model Python Aktif', data: [84.52, 85.1, 83.94, 84.52], backgroundColor: '#0ea5e9', borderRadius: 6 },
-                        { label: 'Random Forest (Referensi)', data: [83.2, 84.02, 82.11, 83.05], backgroundColor: '#10b981', borderRadius: 6 },
-                        { label: 'Logistic Regression (Referensi)', data: [81.88, 80.91, 82.54, 81.72], backgroundColor: '#f59e0b', borderRadius: 6 }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { min: 70, max: 100 } } }
+                data: { labels: ['Akurasi (%)', 'Presisi (%)', 'Recall (%)', 'F1-Score (%)'], datasets },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { min: 60, max: 100 } } }
             });
+        }
+
+        async function initializeCharts() {
+            let metrics = FALLBACK_METRICS;
+            try {
+                const resp = await fetch(`${apiBase}/api/metrics`);
+                const data = await resp.json();
+                if (resp.ok && data.ok && data.models) metrics = data.models;
+            } catch (e) { /* pakai fallback */ }
+            renderChart(metrics);
         }
 
         window.onload = function () {
