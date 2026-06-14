@@ -39,4 +39,4 @@ streamlit run app.py
 | `models/model_diabetes_terbaik.pkl` | Model terlatih |
 | `diabetes.ipynb` | Notebook eksplorasi data & pelatihan model |
 | `scripts/fix_model.py` | Utilitas kompatibilitas pickle NumPy |
-| `panduan_belajar_diabetes.md`, `PANDUAN_BELAJAR_SMA.md` | Materi belajar |
+| `docs/panduan_belajar_diabetes.md`, `docs/PANDUAN_BELAJAR_SMA.md` | Materi belajar |
